@@ -3,18 +3,16 @@ from memoria import get_cliente, salvar_cliente
 from fluxo import responder
 from utils import delay
 import requests
-import os
 
 app = Flask(__name__)
 
-# 🔒 RECOMENDADO: usar variável de ambiente no Render
-TOKEN = os.getenv("KOMMO_TOKEN")
+# 🔑 TOKEN DIRETO (sem variável de ambiente)
+TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImp0aSI6ImMxMzJjMzhlMjYxYmVhNGFjNjJiZDRmZTk0OGJjNzhiZmMzNzVhMjI3MGQwNDZiYzMyZGY4OTEzOWQ4NGIzZjRlNzlmZTQ4MzhjYWY2M2Y4In0.eyJhdWQiOiI1ODY4MDkwZi00YjQ5LTQwNzgtYmZiZi04ZjJhYTBhNzU5ZDYiLCJqdGkiOiJjMTMyYzM4ZTI2MWJlYTRhYzYyYmQ0ZmU5NDhiYzc4YmZjMzc1YTIyNzBkMDQ2YmMzMmRmODkxMzlkODRiM2Y0ZTc5ZmU0ODM4Y2FmNjNmOCIsImlhdCI6MTc3Njk2NzY5MiwibmJmIjoxNzc2OTY3NjkyLCJleHAiOjE4MDM2MDAwMDAsInN1YiI6IjEzMzg2NTgzIiwiZ3JhbnRfdHlwZSI6IiIsImFjY291bnRfaWQiOjM0NzYzNDU1LCJiYXNlX2RvbWFpbiI6ImtvbW1vLmNvbSIsInZlcnNpb24iOjIsInNjb3BlcyI6WyJwdXNoX25vdGlmaWNhdGlvbnMiLCJmaWxlcyIsImNybSIsImZpbGVzX2RlbGV0ZSIsIm5vdGlmaWNhdGlvbnMiXSwiaGFzaF91dWlkIjoiZGUwN2YyYzktNzFmZC00NmU0LTlhNTEtNGQ3MDk5MzYyYWRlIiwiYXBpX2RvbWFpbiI6ImFwaS1jLmtvbW1vLmNvbSJ9.h7fYq2JwgzUEbM_q3giETLU1Rm3J0Y8qiYz6x-5aCPmTRJy6VoUvLYKbjQfqFFRRckuUfvEZkZExJXL3l0PAceB0bg98R9iyONzh26mgo31pWcX7bicBSZbfrc0OboXn5yJp4spz056SY-uD5rC4K8r0SgVGkExGSzKRUDVNL9cynUpibWLFYuQx7xPDjo1rlanJzGfjyI1e8sFcQw5S2c7jnjki-JkrTIn8OwSNYv2otoDMLeuToH2r405fi5NyXQ0PZCD1CtqEwZjm1AkpEXNsO6cSZMcI1MjByCZN2zOXad6P1czf_SWdIj-WNpKQM_SR_eK4nNWhezGNYfFxZA"
 
 @app.route("/webhook", methods=["GET", "POST"])
 @app.route("/webhooks", methods=["GET", "POST"])
 def webhook():
     try:
-        # 🔥 aceita qualquer formato (resolve erro 415)
         data = request.get_json(silent=True)
 
         if not data:
@@ -22,47 +20,45 @@ def webhook():
 
         print("DADOS RECEBIDOS:", data)
 
-        # 🔥 parsing seguro (funciona com JSON da Kommo)
-        msg_data = data.get("message", {}).get("add", [{}])[0]
+        # ✅ parsing correto da Kommo
+        mensagem = data.get("message[add][0][text]")
+        conversation_id = data.get("message[add][0][chat_id]")
+        entity_id = data.get("message[add][0][entity_id]")
+        tipo = data.get("message[add][0][type]")
+        user_id = data.get("message[add][0][contact_id]", "1")
 
-        mensagem = msg_data.get("text", "")
-        conversation_id = msg_data.get("chat_id")
-        entity_id = msg_data.get("entity_id")
-        tipo = msg_data.get("type")
-        user_id = msg_data.get("contact_id", "1")
+        print("mensagem:", mensagem)
+        print("conversation_id:", conversation_id)
 
-        # ❌ ignora mensagens enviadas por você
         if tipo != "incoming":
             return jsonify({"status": "ignorado"})
 
-        # 🧠 memória do cliente
+        if not mensagem or not conversation_id:
+            print("Dados incompletos")
+            return jsonify({"status": "erro_dados"}), 400
+
         cliente = get_cliente(user_id)
-
-        # 🤖 gera resposta
         resposta = responder(mensagem, cliente)
-
         salvar_cliente(user_id, cliente)
 
         delay()
 
-        # 📡 envia resposta para Kommo
-        url = "https://marcussiadvogados.kommo.com"
+        # ✅ endpoint correto
+        url = "https://marcussiadvogados.kommo.com/api/v4/chats/messages"
 
         headers = {
             "Authorization": f"Bearer {TOKEN}",
             "Content-Type": "application/json"
         }
 
+        # ✅ payload correto
         payload = {
-            "message": {
-                "text": resposta
-            },
             "conversation_id": conversation_id,
-            "entity_id": entity_id,
-            "entity_type": "leads"
+            "text": resposta
         }
 
         r = requests.post(url, json=payload, headers=headers)
+
         print("RESPOSTA KOMMO:", r.status_code, r.text)
 
     except Exception as e:
@@ -71,7 +67,6 @@ def webhook():
     return "ok", 200
 
 
-# 🔧 rota raiz (evita erro 404 no Render)
 @app.route("/", methods=["GET"])
 def home():
     return "Webhook rodando", 200
