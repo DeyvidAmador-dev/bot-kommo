@@ -11,7 +11,9 @@ TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImp0aSI6Ijg4MzRlNTIxY2RmNWFmMzAzMzh
 @app.route("/webhook", methods=["GET", "POST"])
 @app.route("/webhooks", methods=["GET", "POST"])
 def webhook():
-    data = request.get_json(silent=True)
+    data = request.json or request.args
+    print("DADOS RECEBIDOS:", data)
+    return "ok", 200
 
     if not data:
         data = request.form.to_dict()
