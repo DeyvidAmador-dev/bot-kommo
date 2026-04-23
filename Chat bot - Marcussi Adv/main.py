@@ -46,7 +46,7 @@ def webhook():
         delay()
 
         # 📡 envia resposta para Kommo
-        url = "https://api-c.kommo.com/v4/messages"
+        url = "https://marcussiadvogados.kommo.com"
 
         headers = {
             "Authorization": f"Bearer {TOKEN}",
