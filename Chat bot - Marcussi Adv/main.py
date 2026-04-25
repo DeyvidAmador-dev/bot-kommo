@@ -1,5 +1,3 @@
-print("🔥 MAIN.PY EXECUTANDO 🔥")
-
 from flask import Flask, request, jsonify
 from memoria import get_cliente, salvar_cliente
 from fluxo import responder
