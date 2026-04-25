@@ -44,7 +44,7 @@ def webhook():
         delay()
 
         # ✅ endpoint correto
-        url = "https://marcussiadvogados.kommo.com/api/v4/chats/messages"
+        url =  "https://marcussiadvogados.kommo.com/api/v4/leads/messages"
 
         headers = {
             "Authorization": f"Bearer {TOKEN}",
